@@ -1,19 +1,25 @@
 # setup master container
 # setup.sh --ip [ip addpress] --key [masternode_key]
-MN_IP=${1-} #-> ip not needed because already dl from docker
+
+if [ $# -gt 4 ]; then
+  echo "too many peram"
+  exit 1
+fi
+
+MN_IP=${1-} #-> ip not needed because already dl from docker, going to add anyway
 MN_KEY=${1-}
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NEXT='\033[0;34m'
-
 NC='\033[0m'
 
 CLI_NAME='dogecash-cli'
 DAEMON_NAME='dogecashd'
 DAEMON_CONFIG=''
 
-
+HAS_IP=false
+HAS_KEY=false
 
 #ifconfig.me
 #ifconfig.co
@@ -53,6 +59,7 @@ for arg in "$@"
            echo "ip2"
            ;;
         "--key" )
-           echo "key";;
+           echo "key"
+           ;;
     esac
   done
