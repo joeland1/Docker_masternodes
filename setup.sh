@@ -15,13 +15,13 @@ SECOND_LINK='ifconfig.me'
 function get_ip()
 {
   MN_IP=$(dig +short myip.opendns.com @resolver1.opendns.com)
-  MN_IP=
+
   if [ -z "$MN_IP" ]; then
+      #echo -e "${RED}$(date '+%F %r') [ERROR]: Could not get external ip from opendns.com${NC}" -> maybe add timestamps later
       echo -e "${RED}[ERROR]: Could not get external ip from opendns.com${NC}"
       echo -e "[INFO]: Trying to get ip from ${SECOND_LINK}"
 
       MN_IP=$(curl -s ${SECOND_LINK})
-      MN_IP=
 
       if [ -z "$MN_IP" ]; then
         echo -e "${RED}[ERROR]: Could not get external ip from ${SECOND_LINK} ${NC}"
