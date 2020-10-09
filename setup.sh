@@ -21,6 +21,8 @@ DAEMON_CONFIG=''
 HAS_IP=false
 HAS_KEY=false
 
+#test
+
 #ifconfig.me
 #ifconfig.co
 #icanhazip.com
