@@ -11,11 +11,17 @@ MN_KEY=
 
 while [ "$1" != "" ]; do
     case $1 in
-        -i|--ip) MN_IP=$2
+      -h|--help)
+        echo "help"
+        exit 1
         ;;
-        -k|--key) MN_KEY=$2
+      -i|--ip)
+        MN_IP=$2
         ;;
-        *)
+      -k|--key)
+        MN_KEY=$2
+        ;;
+      *)
     esac
     shift
     shift
