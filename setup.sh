@@ -6,22 +6,24 @@ if [ $# -gt 4 ]; then
   exit 1
 fi
 
-MN_IP=${1-} #-> ip not needed because already dl from docker, going to add anyway
-MN_KEY=${1-}
+MN_IP=
+MN_KEY=
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NEXT='\033[0;34m'
 NC='\033[0m'
 
-CLI_NAME='dogecash-cli'
-DAEMON_NAME='dogecashd'
-DAEMON_CONFIG=''
+COIN_NAME='dogecash'
+CLI_NAME=${COIN_NAME}"-cli"
+DAEMON_NAME=${COIN_NAME}"d"
+
+HOME_PATH="/home/$COIN_NAME"
+
+DAEMON_CONFIG_LAUNCH="-daemon -datadir=${HOME_PATH}/.${COIN_NAME}"
 
 HAS_IP=false
 HAS_KEY=false
-
-#test
 
 #ifconfig.me
 #ifconfig.co
@@ -50,7 +52,12 @@ function get_ip()
 
 function getmnkey()
 {
-  echo "x"
+  echo -e "[INFO]: Generating ${COIN_NAME} masternode key"
+  exec "$(pwd)/${DAEMON_NAME} ${DAEMON_CONFIG_LAUNCH}"
+  MN_KEY=$(pwd"/${CLI_NAME} getblockcount")
+  while [${MN_KEY} -eq -1]; do
+    sleep 1
+  done
 }
 
 for arg in "$@"
@@ -58,7 +65,6 @@ for arg in "$@"
     case $arg in
         "--ip" )
            echo "ip"
-           echo "ip2"
            ;;
         "--key" )
            echo "key"
