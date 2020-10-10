@@ -27,12 +27,6 @@ while [ "$1" != "" ]; do
     shift
 done
 
-
-echo "ip="$MN_IP
-echo "mn="$MN_KEY
-
-exit 1
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NEXT='\033[0;34m'
@@ -81,5 +75,6 @@ function getmnkey()
   MN_KEY=$(pwd"/${CLI_NAME} getblockcount")
   while [${MN_KEY} -eq -1]; do
     sleep 1
+    MN_KEY=$(pwd)"/${CLI_NAME} getblockcount"
   done
 }
