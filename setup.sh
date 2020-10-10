@@ -9,6 +9,24 @@ fi
 MN_IP=
 MN_KEY=
 
+while [ "$1" != "" ]; do
+    case $1 in
+        -i|--ip) MN_IP=$2
+        ;;
+        -k|--key) MN_KEY=$2
+        ;;
+        *)
+    esac
+    shift
+    shift
+done
+
+
+echo "ip="$MN_IP
+echo "mn="$MN_KEY
+
+exit 1
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NEXT='\033[0;34m'
@@ -59,15 +77,3 @@ function getmnkey()
     sleep 1
   done
 }
-
-for arg in "$@"
-  do
-    case $arg in
-        "--ip" )
-           echo "ip"
-           ;;
-        "--key" )
-           echo "key"
-           ;;
-    esac
-  done
