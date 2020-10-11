@@ -70,11 +70,11 @@ function get_ip()
 
 function getmnkey()
 {
-  echo -e "[INFO]: Generating ${COIN_NAME} masternode key"
-  exec "$(pwd)/${DAEMON_NAME} ${DAEMON_CONFIG_LAUNCH}"
-  MN_KEY=$(pwd"/${CLI_NAME} getblockcount")
+  echo -e "[INFO]: Generating $COIN_NAME masternode key"
+  exec "$(pwd)/$DAEMON_NAME $DAEMON_CONFIG_LAUNCH"
+  MN_KEY=$(pwd"/$CLI_NAME getblockcount")
   while [${MN_KEY} -eq -1]; do
     sleep 1
-    MN_KEY=$(pwd)"/${CLI_NAME} getblockcount"
+    MN_KEY=$(pwd)"/$CLI_NAME getblockcount"
   done
 }
