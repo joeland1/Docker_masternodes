@@ -1,32 +1,5 @@
 # setup master container
 # setup.sh --ip [ip addpress] --key [masternode_key]
-
-if [ $# -gt 4 ]; then
-  echo "too many peram"
-  exit 1
-fi
-
-MN_IP=
-MN_KEY=
-
-while [ "$1" != "" ]; do
-    case $1 in
-      -h|--help)
-        echo "help"
-        exit 1
-        ;;
-      -i|--ip)
-        MN_IP=$2
-        ;;
-      -k|--key)
-        MN_KEY=$2
-        ;;
-      *)
-    esac
-    shift
-    shift
-done
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NEXT='\033[0;34m'
@@ -65,16 +38,51 @@ function get_ip()
         exit 1
       fi
   fi
-  echo -e "$GREEN[INFO]: IP Address Aquired -> $MN_IP$NC"
+  echo -e "$GREEN[INFO]: IP address aquired -> $MN_IP$NC"
 }
 
 function getmnkey()
 {
   echo -e "[INFO]: Generating $COIN_NAME masternode key"
-  exec "$(pwd)/$DAEMON_NAME $DAEMON_CONFIG_LAUNCH"
-  MN_KEY=$(pwd"/$CLI_NAME getblockcount")
-  while [${MN_KEY} -eq -1]; do
+  exec $HOME_PATH/$DAEMON_NAME $DAEMON_CONFIG_LAUNCH
+  MN_KEY=$HOME_PATH/$CLI_NAME getblockcount
+  while [$MN_KEY -eq -1]; do
     sleep 1
-    MN_KEY=$(pwd)/$CLI_NAME getblockcount
+    MN_KEY=$HOME_PATH/$CLI_NAME getblockcount
   done
+
+  MN_KEY=$HOME_PATH/$CLI_NAME createmasternodekey
+  $HOME_PATH/$CLI_NAME stop
+  echo -e "$GREEN[INFO]: Masternode key aquired -> $MN_IP$NC"
 }
+
+function write_conf()
+{
+
+}
+
+if [ $# -gt 4 ]; then
+  echo "too many peram"
+  exit 1
+fi
+
+MN_IP=
+MN_KEY=
+
+while [ "$1" != "" ]; do
+    case $1 in
+      -h|--help)
+        echo "help"
+        exit 1
+        ;;
+      -i|--ip)
+        MN_IP=$2
+        ;;
+      -k|--key)
+        MN_KEY=$2
+        ;;
+      *)
+    esac
+    shift
+    shift
+done
