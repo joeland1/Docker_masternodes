@@ -79,6 +79,11 @@ function write_conf()
     echo "rpcpassword="$(cat /dev/urandom | tr -dc A-Za-z0-9 | head -c 20 ; echo '') >> $HOME_PATH/.$COIN_NAME/$CONF_NAME
 }
 
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root"
+  exit 1
+fi
+
 if [ $# -gt 4 ]; then
   echo "too many peram"
   exit 1
@@ -117,3 +122,4 @@ apt-get install dnsutils
 write_conf
 getmnkey
 get_ip
+apt-get remove dnsutils

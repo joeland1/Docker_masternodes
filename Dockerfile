@@ -8,9 +8,7 @@ RUN mkdir -p /home/$COIN
 RUN mkdir -p /home/$COIN/.$COIN
 WORKDIR /home/$COIN
 
-COPY setup.sh .
-COPY dogecashd .
-COPY dogecash-cli .
+COPY . .
 
 RUN chmod +x .
 
