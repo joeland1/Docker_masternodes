@@ -122,4 +122,4 @@ apt-get install dnsutils
 write_conf
 getmnkey
 get_ip
-apt-get remove dnsutils
+#apt-get remove dnsutils
