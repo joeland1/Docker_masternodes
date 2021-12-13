@@ -1,5 +1,5 @@
 # setup master container
-# setup.sh --key [optional mn key]
+# setup.sh --key [optional mn key] --reset (will reset conf file if found)
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -42,6 +42,7 @@ function create_rpc_credentials () {
 }
 
 function create_mn_key () {
+  echo -e "No masternode key provided... generating own"
   $DAEMON_PATH -datadir=$DATA_PATH -paramsdir=$DATA_PATH -conf=$CONF_FILE -rpcallowip=127.0.0.1 -rpcport=$RPC_PORT
 
   "masternodeprivkey="$($CLI_PATH -rpcuser=$(grep 'rpcuser='$CONF_FILE | sed 's/rpcuser=//') -rpcpassword=$(grep 'rpcpassword='$CONF_FILE | sed 's/rpcpassword=//') -rpcport=$RPC_PORT creatematernodekey ) > 
@@ -52,7 +53,6 @@ function main () {
   bootstrap
   create_rpc_credentials
   create_mn_key
-
 }
 
 main
