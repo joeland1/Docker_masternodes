@@ -28,20 +28,31 @@ function setup_tor () {
   fi
 }
 
-function download_wallet () [
+function download_wallet () {
   #wget https://api.github.com/repos/dogecash/dogecash/releases/latest -s | jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url'
+  wget https://api.github.com/repos/dogecash/dogecash/releases/latest -O current_wallet.json
+  SEARCH_FACTOR=""
   case $(uname) in
   aarch64)
-    wget $(wget https://api.github.com/repos/dogecash/dogecash/releases/latest -s | jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url') -O - | tar xz
+    SEARCH_FACTOR+="aarch64"
     ;;
-  Darwin)
+  Darwin | darwin)
+    SEARCH_FACTOR+="osx64"
     ;;
   x86_64)
+    SEARCH_FACTOR+="x86_64"
     ;;
   *)
+    echo -e "${RED}Error: recieved invalid architecture, something done fucked up.${NC}"
+    exit 1
     ;;
   esac
-]
+  wget $(jq -r --arg search_factor "$SEARCH_FACTOR" '.assets[]|select(.browser_download_url|test(".*$search_factor.*(?<!debug).tar.gz"))| .browser_download_url' current_wallet.json) -O "binaries.tar.gz"
+  tar -xzf binaries.tar.gz --wildcards '*dogecash-cli'
+  tar -xzf binaries.tar.gz --wildcards '*dogecashd'
+  tar -xzf binaries.tar.gz --wildcards '*sapling-output.params' -C $PARAMS_DIR
+  tar -xf binaries.tar.gz --wildcards '*sapling-spend.params' -C $PARAMS_DIR
+}
 
 function bootstrap () {
   echo -e "Downloading and extracting bootstrap, this may take a while."
