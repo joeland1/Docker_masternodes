@@ -12,21 +12,36 @@ DAEMON_PATH='./dogecashd'
 CLI_PATH='./dogecash-cli'
 DATA_PATH='/root/data'
 CONF_FILE=$DATA_PATH'/dogecash.conf'
-RPC_PORT=57740
+RPC_PORT=57741
+PARAMS_DIR='/root/params'
 
 function setup_tor () {
   echo "Setting up tor..."
   $hash_pw=$(tor --quiet --hash-password password)
   tor --quiet -controlport 9051 -runasdaemon 1 -hashedcontrolpassword "$hash_pw"
 
-  if [ -z $(pidof tor) ];
-  then
+  if [ -z $(pidof tor) ]; then
     echo -e "${RED}Tor has not started. Setup aborted.${NC}"
     exit -1
   else
     echo -e "${GREEN}Tor successfully started.${NC}"
   fi
 }
+
+function download_wallet () [
+  #wget https://api.github.com/repos/dogecash/dogecash/releases/latest -s | jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url'
+  case $(uname) in
+  aarch64)
+    wget $(wget https://api.github.com/repos/dogecash/dogecash/releases/latest -s | jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url') -O - | tar xz
+    ;;
+  Darwin)
+    ;;
+  x86_64)
+    ;;
+  *)
+    ;;
+  esac
+]
 
 function bootstrap () {
   echo -e "Downloading and extracting bootstrap, this may take a while."
@@ -51,19 +66,26 @@ function create_tor_creds_v2(){
 
 function create_mn_key () {
   echo -e "No masternode key provided... generating own"
-  $DAEMON_PATH -datadir=$DATA_PATH -paramsdir=$DATA_PATH -conf=$CONF_FILE -rpcallowip=127.0.0.1 -rpcport=$RPC_PORT
-
-  "masternodeprivkey="$($CLI_PATH -rpcuser=$(grep 'rpcuser='$CONF_FILE | sed 's/rpcuser=//') -rpcpassword=$(grep 'rpcpassword='$CONF_FILE | sed 's/rpcpassword=//') -rpcport=$RPC_PORT creatematernodekey ) > $CONF_FILE
-  $CLI_PATH -rpcuser=$(grep 'rpcuser='$CONF_FILE | sed 's/rpcuser=//') -rpcpassword=$(grep 'rpcpassword='$CONF_FILE | sed 's/rpcpassword=//') -rpcport=$RPC_PORT stop
+  $DAEMON_PATH -datadir=$DATA_PATH -paramsdir=$PARAMS_DIR -conf=$CONF_FILE -rpcallowip=127.0.0.1 -rpcport=$RPC_PORT
+  echo -n "masternodeprivkey=" >> $CONF_FILE
+  $CLI_PATH -rpcuser=$(grep 'rpcuser='$CONF_FILE | sed 's/rpcuser=//') -rpcpassword=$(grep 'rpcpassword=' $CONF_FILE | sed 's/rpcpassword=//') -rpcport= $RPC_PORT creatematernodekey | tee -a $CONF_FILE
 }
 
+function run () {
+  source $CONF_FILE
+  $CLI_PATH -rpcuser=$rpcuser -rpcpassword=$rpcpassword -rpcport=$rpcport initializemasternode $masternodeaddr $masternodeprivkey
+  echo "add the following line to your masternode.conf"
+  echo -e "${BLUE}alias $masternodeaddr $masternodeprivkey collateral_tx collateral_index${NC}"
+}
 
 function main () {
   setup_tor
-  bootstrap
+  download_wallet
+  #bootstrap
   create_rpc_credentials
   create_tor_creds_v2
   create_mn_key
+  run
 }
 
 main
@@ -82,5 +104,12 @@ server=1
 daemon=1
 maxconnections=256
 masternode=1
+
+
+dogecash-5.4.4/bin/dogecash-cli
+dogecash-5.4.4/bin/dogecashd
+
+dogecash-5.4.4/share/dogecash/sapling-output.params
+dogecash-5.4.4/share/dogecash/sapling-spend.params
 
 ###BLOCK-COMMENT
