@@ -4,15 +4,17 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+BOLD='\033[1m'
 NC='\033[0m'
 
 BOOTSTRAP_LINK='https://www.dropbox.com/s/s4vy92sczk9c10s/blocks_n_chains.tar.gz'
+ADDNODE_LINK='https://www.dropbox.com/s/s0pdil1rehsy4fu/peers.txt'
 
 DAEMON_PATH='./dogecashd'
 CLI_PATH='./dogecash-cli'
 DATA_PATH='/root/data'
 CONF_FILE=$DATA_PATH'/dogecash.conf'
-RPC_PORT=57741
+RPC_PORT=57740
 PARAMS_DIR='/root/params'
 
 function setup_tor () {
@@ -42,8 +44,11 @@ function download_wallet () {
   x86_64)
     SEARCH_FACTOR+="x86_64"
     ;;
+  i686)
+    SEARCH_FACTOR+="i686"
+    ;;
   *)
-    echo -e "${RED}Error: recieved invalid architecture, something done fucked up.${NC}"
+    echo -e "${RED}Error: recieved invalid os, something done fucked up.${NC}"
     exit 1
     ;;
   esac
@@ -68,11 +73,12 @@ function create_rpc_credentials () {
 }
 
 function create_tor_creds_v2(){
-  echo 'RSA1024:'$(echo $KEY | sed -r 's/-----BEGIN RSA PRIVATE KEY-----//g' | sed -r 's/-----END RSA PRIVATE KEY-----//g') > .dogecash/onion_private_key
+  KEY=$(openssl genrsa 1024)
+  echo 'RSA1024:'$(cat <<< $KEY | sed -r 's/-----BEGIN RSA PRIVATE KEY-----//g;s/-----END RSA PRIVATE KEY-----//g') > .dogecash/onion_private_key
   #for some reason cant do this all in 1 go, have to save file then redo. Something about null stuff
   echo -n $(tr -d "\n " < .dogecash/onion_private_key) > .dogecash/onion_private_key
   echo -n 'externalip=' >> $CONF_FILE
-  echo $(openssl rsa -in <(cat <<< $KEY) -pubout -outform DER | tail -c +23 | sha1sum | head -c 20 | xxd -r -p | base32))'.onion' | tee -a $CONF_FILE | sed "s/.*/masternodeaddr=&:$RPC_PORT/" >> $CONF_FILE
+  echo $(openssl rsa -in <(cat <<< $KEY) -pubout -outform DER | tail -c +23 | sha1sum | head -c 20 | xxd -r -p | base32)'.onion' | tee -a $CONF_FILE | sed "s/.*/masternodeaddr=&:$RPC_PORT/" >> $CONF_FILE
 }
 
 function create_mn_key () {
@@ -86,7 +92,19 @@ function run () {
   source $CONF_FILE
   $CLI_PATH -rpcuser=$rpcuser -rpcpassword=$rpcpassword -rpcport=$rpcport initializemasternode $masternodeaddr $masternodeprivkey
   echo "add the following line to your masternode.conf"
+  echo "the information for the collateral transactions can be determined by using the ${BOLD}getmasternodeoutputs${NC} from your personal wallet."
   echo -e "${BLUE}alias $masternodeaddr $masternodeprivkey collateral_tx collateral_index${NC}"
+}
+
+function addnodes () {
+  source $CONF_FILE
+  echo -e "--------- adding addnodes ---------"
+  for i in $(wget $ADDNODE_LINK | sed ':a;N;$!ba;s/\n/ /g;s/addnode=//g;s/:[0-9]\+//g'); do
+    $CLI_PATH -rpcuser=$rpcuser -rpcpassword=$rpcpassword -rpcport=$rpcport addnode $i add
+    $CLI_PATH -rpcuser=$rpcuser -rpcpassword=$rpcpassword -rpcport=$rpcport addnode $i onetry
+    echo -e "$i"
+  done;
+  echo -e "--------- finished addnodes ---------"
 }
 
 function main () {
