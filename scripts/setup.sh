@@ -14,12 +14,12 @@ DAEMON_PATH='./dogecashd'
 CLI_PATH='./dogecash-cli'
 DATA_PATH='/root/data'
 CONF_FILE=$DATA_PATH'/dogecash.conf'
-RPC_PORT=57740
+RPC_PORT=56740
 PARAMS_DIR='/root/params'
 
 function setup_tor () {
   echo "Setting up tor..."
-  $hash_pw=$(tor --quiet --hash-password password)
+  hash_pw=$(tor --quiet --hash-password password)
   tor --quiet -controlport 9051 -runasdaemon 1 -hashedcontrolpassword "$hash_pw"
 
   if [ -z $(pidof tor) ]; then
@@ -33,10 +33,9 @@ function setup_tor () {
 function download_wallet () {
   #wget https://api.github.com/repos/dogecash/dogecash/releases/latest -s | jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url'
   wget https://api.github.com/repos/dogecash/dogecash/releases/latest -O current_wallet.json
-  SEARCH_FACTOR=""
-  case $(uname) in
+  case $(uname -m) in
   aarch64)
-    SEARCH_FACTOR+="aarch64"
+      wget $(jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url' current_wallet.json) -O "binaries.tar.gz"
     ;;
   Darwin | darwin)
     SEARCH_FACTOR+="osx64"
@@ -48,15 +47,15 @@ function download_wallet () {
     SEARCH_FACTOR+="i686"
     ;;
   *)
-    echo -e "${RED}Error: recieved invalid os, something done fucked up.${NC}"
-    exit 1
+    SEARCH_FACTOR+="aarch64"
     ;;
   esac
-  wget $(jq -r --arg search_factor "$SEARCH_FACTOR" '.assets[]|select(.browser_download_url|test(".*$search_factor.*(?<!debug).tar.gz"))| .browser_download_url' current_wallet.json) -O "binaries.tar.gz"
-  tar -xzf binaries.tar.gz --wildcards '*dogecash-cli'
-  tar -xzf binaries.tar.gz --wildcards '*dogecashd'
-  tar -xzf binaries.tar.gz --wildcards '*sapling-output.params' -C $PARAMS_DIR
-  tar -xf binaries.tar.gz --wildcards '*sapling-spend.params' -C $PARAMS_DIR
+  wget $(jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url' current_wallet.json) -O "binaries.tar.gz"
+  #for some reason jq wont use variables so just manually make links
+  mv $(tar -xzvf binaries.tar.gz --wildcards '*dogecash-cli') ${CLI_PATH:2}
+  mv $(tar -xzvf binaries.tar.gz --wildcards '*dogecashd') ${DAEMON_PATH:2}
+  mv $(tar -xzvf binaries.tar.gz --wildcards '*sapling-output.params') $PARAMS_DIR
+  mv $(tar -xzvf binaries.tar.gz --wildcards '*sapling-spend.params') $PARAMS_DIR
 }
 
 function bootstrap () {
@@ -70,29 +69,34 @@ function create_rpc_credentials () {
   echo "rpcuser="$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 10) > $CONF_FILE
   echo "rpcpassword="$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 20 ) >> $CONF_FILE
   echo "rpcallowip=127.0.0.1" >> $CONF_FILE
+  echo "rpcport=$RPC_PORT" >> $CONF_FILE
 }
 
 function create_tor_creds_v2(){
   KEY=$(openssl genrsa 1024)
-  echo 'RSA1024:'$(cat <<< $KEY | sed -r 's/-----BEGIN RSA PRIVATE KEY-----//g;s/-----END RSA PRIVATE KEY-----//g') > .dogecash/onion_private_key
+  echo 'RSA1024:'$(cat <<< $KEY | sed -r 's/-----BEGIN RSA PRIVATE KEY-----//g;s/-----END RSA PRIVATE KEY-----//g') > $DATA_PATH/onion_private_key
   #for some reason cant do this all in 1 go, have to save file then redo. Something about null stuff
-  echo -n $(tr -d "\n " < .dogecash/onion_private_key) > .dogecash/onion_private_key
+  echo -n $(tr -d "\n " < $DATA_PATH/onion_private_key) > $DATA_PATH/onion_private_key
   echo -n 'externalip=' >> $CONF_FILE
   echo $(openssl rsa -in <(cat <<< $KEY) -pubout -outform DER | tail -c +23 | sha1sum | head -c 20 | xxd -r -p | base32)'.onion' | tee -a $CONF_FILE | sed "s/.*/masternodeaddr=&:$RPC_PORT/" >> $CONF_FILE
 }
 
 function create_mn_key () {
   echo -e "No masternode key provided... generating own"
-  $DAEMON_PATH -datadir=$DATA_PATH -paramsdir=$PARAMS_DIR -conf=$CONF_FILE -rpcallowip=127.0.0.1 -rpcport=$RPC_PORT
+  $DAEMON_PATH -datadir=$DATA_PATH -paramsdir=$PARAMS_DIR -conf=$CONF_FILE -rpcallowip=127.0.0.1 -rpcport=$RPC_PORT -daemon
+
+  sleep 5
+
   echo -n "masternodeprivkey=" >> $CONF_FILE
-  $CLI_PATH -rpcuser=$(grep 'rpcuser='$CONF_FILE | sed 's/rpcuser=//') -rpcpassword=$(grep 'rpcpassword=' $CONF_FILE | sed 's/rpcpassword=//') -rpcport= $RPC_PORT creatematernodekey | tee -a $CONF_FILE
+  echo "pass"
+  $CLI_PATH -rpcuser=$(grep 'rpcuser=' $CONF_FILE | sed 's/rpcuser=//') -rpcpassword=$(grep 'rpcpassword=' $CONF_FILE | sed 's/rpcpassword=//') -rpcport=$RPC_PORT createmasternodekey >> $CONF_FILE
 }
 
 function run () {
   source $CONF_FILE
-  $CLI_PATH -rpcuser=$rpcuser -rpcpassword=$rpcpassword -rpcport=$rpcport initializemasternode $masternodeaddr $masternodeprivkey
+  $CLI_PATH -rpcuser=$rpcuser -rpcpassword=$rpcpassword -rpcport=$rpcport initmasternode $masternodeprivkey $masternodeaddr
   echo "add the following line to your masternode.conf"
-  echo "the information for the collateral transactions can be determined by using the ${BOLD}getmasternodeoutputs${NC} from your personal wallet."
+  echo -e "the information for the collateral transactions can be determined by using the ${BOLD}getmasternodeoutputs${NC} from your personal wallet."
   echo -e "${BLUE}alias $masternodeaddr $masternodeprivkey collateral_tx collateral_index${NC}"
 }
 
@@ -114,31 +118,8 @@ function main () {
   create_rpc_credentials
   create_tor_creds_v2
   create_mn_key
+  addnodes
   run
 }
 
 main
-
-
-<<'###BLOCK-COMMENT'
-Follwing text below is cample.conf Might be removed later onbut not sure. good resource
-
-rpcuser=root
-rpcpassword=PasswordOfYourChoice
-rpcallowip=127.0.0.1
-externalip=101.168.87.207
-masternodeaddr=101.168.87.207:51472
-masternodeprivkey=87haGjw6ABVZfZTcMNX5c1E3HUVH4qWcdc823RBDHsGC5P8FohW
-server=1
-daemon=1
-maxconnections=256
-masternode=1
-
-
-dogecash-5.4.4/bin/dogecash-cli
-dogecash-5.4.4/bin/dogecashd
-
-dogecash-5.4.4/share/dogecash/sapling-output.params
-dogecash-5.4.4/share/dogecash/sapling-spend.params
-
-###BLOCK-COMMENT
