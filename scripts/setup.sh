@@ -38,19 +38,20 @@ function download_wallet () {
       wget $(jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url' current_wallet.json) -O "binaries.tar.gz"
     ;;
   Darwin | darwin)
-    SEARCH_FACTOR+="osx64"
+    #might be useless idk
+    wget $(jq -r '.assets[]|select(.browser_download_url|test(".*osx64.*(?<!debug).tar.gz"))| .browser_download_url' current_wallet.json) -O "binaries.tar.gz"
     ;;
   x86_64)
-    SEARCH_FACTOR+="x86_64"
+    wget $(jq -r '.assets[]|select(.browser_download_url|test(".*x86_64.*(?<!debug).tar.gz"))| .browser_download_url' current_wallet.json) -O "binaries.tar.gz"
     ;;
   i686)
     SEARCH_FACTOR+="i686"
     ;;
   *)
-    SEARCH_FACTOR+="aarch64"
+    echo -e "${RED}Cannot automatically get wallet.${NC}"
+    exit 1
     ;;
   esac
-  wget $(jq -r '.assets[]|select(.browser_download_url|test(".*aarch64.*(?<!debug).tar.gz"))| .browser_download_url' current_wallet.json) -O "binaries.tar.gz"
   #for some reason jq wont use variables so just manually make links
   mv $(tar -xzvf binaries.tar.gz --wildcards '*dogecash-cli') ${CLI_PATH:2}
   mv $(tar -xzvf binaries.tar.gz --wildcards '*dogecashd') ${DAEMON_PATH:2}
@@ -103,12 +104,11 @@ function run () {
 function addnodes () {
   source $CONF_FILE
   echo -e "--------- adding addnodes ---------"
-  for i in $(wget $ADDNODE_LINK | sed ':a;N;$!ba;s/\n/ /g;s/addnode=//g;s/:[0-9]\+//g'); do
+  for i in $(wget $ADDNODE_LINK -O - | sed ':a;N;$!ba;s/\n/ /g;s/addnode=//g;s/:[0-9]\+//g'); do
     $CLI_PATH -rpcuser=$rpcuser -rpcpassword=$rpcpassword -rpcport=$rpcport addnode $i add
     $CLI_PATH -rpcuser=$rpcuser -rpcpassword=$rpcpassword -rpcport=$rpcport addnode $i onetry
-    echo -e "$i"
+    echo -e "added addnode ${BOLD}$i${NC}"
   done;
-  echo -e "--------- finished addnodes ---------"
 }
 
 function main () {
