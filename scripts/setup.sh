@@ -114,7 +114,7 @@ function addnodes () {
 function main () {
   setup_tor
   download_wallet
-  #bootstrap
+  bootstrap
   create_rpc_credentials
   create_tor_creds_v2
   create_mn_key
