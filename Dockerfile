@@ -2,7 +2,7 @@ FROM debian:latest
 WORKDIR /root
 RUN apt update && apt install tor wget jq xxd -y
 
-COPY scripts bin .
+COPY scripts .
 
 RUN chmod +x *.sh
 
